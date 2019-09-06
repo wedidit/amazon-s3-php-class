@@ -1,5 +1,6 @@
 #!/usr/local/bin/php
 <?php
+exit 1;
 /**
 * $Id$
 *
