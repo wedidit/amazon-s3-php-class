@@ -434,10 +434,7 @@ class S3
 	*/
 	private static function __triggerError($message, $file, $line, $code = 0)
 	{
-		if (self::$useExceptions)
-			throw new S3Exception($message, $file, $line, $code);
-		else
-			trigger_error($message, E_USER_WARNING);
+		throw new S3Exception($message, $file, $line, $code);
 	}
 
 
@@ -639,10 +636,9 @@ class S3
 	* Create input info array for putObject()
 	*
 	* @param string $file Input file
-	* @param mixed $md5sum Use MD5 hash (supply a string if you want to use your own)
 	* @return array | false
 	*/
-	public static function inputFile($file, $md5sum = true)
+	public static function inputFile($file)
 	{
 		if (!file_exists($file) || !is_file($file) || !is_readable($file))
 		{
@@ -650,8 +646,7 @@ class S3
 			return false;
 		}
 		clearstatcache(false, $file);
-		return array('file' => $file, 'size' => filesize($file), 'md5sum' => $md5sum !== false ?
-		(is_string($md5sum) ? $md5sum : base64_encode(md5_file($file, true))) : '', 'sha256sum' => hash_file('sha256', $file));
+		return array('file' => $file, 'size' => filesize($file), 'sha256sum' => hash_file('sha256', $file));
 	}
 
 
@@ -660,10 +655,9 @@ class S3
 	*
 	* @param string $resource Input resource to read from
 	* @param integer $bufferSize Input byte size
-	* @param string $md5sum MD5 hash to send (optional)
 	* @return array | false
 	*/
-	public static function inputResource(&$resource, $bufferSize = false, $md5sum = '')
+	public static function inputResource(&$resource, $bufferSize = false)
 	{
 		if (!is_resource($resource) || (int)$bufferSize < 0)
 		{
@@ -682,7 +676,7 @@ class S3
 			fseek($resource, 0);
 		}
 
-		$input = array('size' => $bufferSize, 'md5sum' => $md5sum);
+		$input = array('size' => $bufferSize);
 		$input['fp'] =& $resource;
 		return $input;
 	}
@@ -708,7 +702,6 @@ class S3
 
 		if (!is_array($input)) $input = array(
 			'data' => $input, 'size' => strlen($input),
-			'md5sum' => base64_encode(md5($input, true)),
 			'sha256sum' => hash('sha256', $input)
 		);
 
@@ -756,11 +749,10 @@ class S3
 		if ($serverSideEncryption !== self::SSE_NONE) // Server-side encryption
 			$rest->setAmzHeader('x-amz-server-side-encryption', $serverSideEncryption);
 
-		// We need to post with Content-Length and Content-Type, MD5 is optional
+		// We need to post with Content-Length and Content-Type
 		if ($rest->size >= 0 && ($rest->fp !== false || $rest->data !== false))
 		{
 			$rest->setHeader('Content-Type', $input['type']);
-			if (isset($input['md5sum'])) $rest->setHeader('Content-MD5', $input['md5sum']);
 
 			if (isset($input['sha256sum'])) $rest->setAmzHeader('x-amz-content-sha256', $input['sha256sum']);
 
@@ -2150,7 +2142,7 @@ final class S3Request
 	 * @access private
 	 */
 	private $headers = array(
-		'Host' => '', 'Date' => '', 'Content-MD5' => '', 'Content-Type' => ''
+		'Host' => '', 'Date' => '', 'Content-Type' => ''
 	);
 
 	/**
